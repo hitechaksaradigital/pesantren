@@ -1,6 +1,6 @@
 // Gambar & aset dari desain asli (di-host publik)
-export const LOGO_SRC =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuDJ7MIeY0Z8XH_ybuiN9QvpFPwlg8SUppy8IV6II9FZuy8BldhRGXvfQrEyXoPeYurX7_rvqfhY5QwlDv2dVAYT64pQZwcOM-HWpWXEOJZAg_Z903goFcJu1FX1WEkLbtOUM46uWGszcYFweczNzhwGgqd5MezbcSnZyveOc8cNl2j6yUeKneVSxUVFJjHSraoorUqqyAx0SwI6m3yoL9R3PzqhZ_CVpl4jjsCJ5cZ27b0hZzjFgre_'
+// Logo: aset lokal public/logo.jpeg
+export const LOGO_SRC = '/logo.jpeg'
 
 export const HERO_IMG =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuC5d-EM4Ql-FnTLe3ib6eofkdlMQ6_1bzdDX_Olf7vMBhBUL7U1FWnXBSjyKkWwqAS0m-xvEyu-O6igvqwSS5S0vaS-jHWGCka6I_dKf88EO0mp8Nu4OrGze8so8F1N9Jop0erpnX4-d3gIrAGNCnNUF_Nx8q-ZCLDXL-d6efwoWY9WCvd4JzSz3TBSUdFwPHMIzbCb3nrQu8Y5QFwmt5tST2_KmI75YNbGqzQnpUcoeJjVc32Ekj8n'

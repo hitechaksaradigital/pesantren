@@ -32,7 +32,7 @@ export default function Footer() {
             <div className="flex items-center gap-3">
               <img
                 alt="Logo Pesantren Modern Darul Ulum Al-Hikmah"
-                className="h-10 w-auto object-contain"
+                className="h-10 w-auto rounded-lg object-contain"
                 src={LOGO_SRC}
               />
               <span className="font-title text-title text-primary">Darul Ulum Al-Hikmah</span>

@@ -52,7 +52,7 @@ export default function RegisteredCandidates({ reloadKey = 0 }) {
                 Statistik PSB
               </span>
               <h2 className="font-headline-sm text-headline-sm text-primary font-bold">
-                Daftar Calon Santri Terdaftar
+                Daftar Calon Santri Terdaftar DIEDIT
               </h2>
               <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
                 Pendaftar terbaru yang tercatat di sistem (maks. {LIMIT} entri terakhir).

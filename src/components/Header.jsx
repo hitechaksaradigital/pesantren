@@ -75,7 +75,7 @@ export default function Header() {
           <a href="#beranda" className="flex items-center gap-3.5">
             <img
               alt="Logo Pesantren Modern Darul Ulum Al-Hikmah"
-              className="h-11 w-auto object-contain"
+              className="h-11 w-auto rounded-lg object-contain"
               src={LOGO_SRC}
             />
             <div className="flex flex-col">
