@@ -1,12 +1,52 @@
 import { useEffect, useRef, useState } from 'react'
 import RegistrationHero from '../components/registration/RegistrationHero.jsx'
+import RegisteredCandidates from '../components/registration/RegisteredCandidates.jsx'
 import { SectionCard, TextInput, SelectInput, FileDrop } from '../components/registration/FormControls.jsx'
 import { DRAFT_KEY, INITIAL_FORM, JENJANG_OPTIONS } from '../data/registration.js'
+import { isSupabaseConfigured, supabase } from '../lib/supabase.js'
+
+const BERKAS_LABELS = { foto: 'Pas Foto', kk: 'Kartu Keluarga', rapor: 'Rapor' }
+
+// Pesan galat database yang teknis diterjemahkan menjadi bahasa yang ramah
+// agar wali pendaftar paham bagian mana yang perlu diperbaiki.
+function friendlyDbError(message = '') {
+  if (message.includes('pendaftaran_psb_nik_check')) {
+    return 'NIK harus tepat 16 digit angka sesuai Kartu Keluarga (misal: 3517XXXXXXXXXXXX). Mohon periksa kembali NIK, lalu kirim ulang.'
+  }
+  if (message.includes('pendaftaran_psb_nisn_check')) {
+    return 'NISN harus tepat 10 digit angka sesuai rapor/ijazah (misal: 0081234567). Mohon periksa kembali NISN, lalu kirim ulang.'
+  }
+  if (message.includes('duplicate key') && message.includes('kode_pendaftar')) {
+    return 'Terjadi bentrok kode pendaftaran (sangat jarang). Silakan tekan "Kirim Formulir" sekali lagi — kode baru akan dibuat otomatis.'
+  }
+  return message
+}
+
+function generateKodePendaftar() {
+  const now = new Date()
+  const y = String(now.getFullYear()).slice(-2)
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let rand = ''
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const values = new Uint32Array(6)
+    crypto.getRandomValues(values)
+    for (const v of values) rand += chars[v % chars.length]
+  } else {
+    for (let i = 0; i < 6; i++) rand += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return `PSB-${y}${m}${d}-${rand}`
+}
 
 export default function PendaftaranPSB() {
   const [form, setForm] = useState(INITIAL_FORM)
   const [fileNames, setFileNames] = useState({ foto: '', kk: '', rapor: '' })
   const [submitted, setSubmitted] = useState(false)
+  const [kodeTerdaftar, setKodeTerdaftar] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
   const statusRef = useRef(null)
 
   // Pulihkan draf tersimpan (jika ada) saat halaman dibuka
@@ -23,30 +63,111 @@ export default function PendaftaranPSB() {
   }, [])
 
   useEffect(() => {
-    if (submitted && statusRef.current) {
+    if ((submitted || errorMessage) && statusRef.current) {
       statusRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
-  }, [submitted])
+  }, [submitted, errorMessage])
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target
-    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+    if (type !== 'checkbox' && (name === 'nisn' || name === 'nik' || name === 'whatsapp')) {
+      const digits = value.replace(/\D/g, '')
+      const limit = name === 'nisn' ? 10 : name === 'nik' ? 16 : 15
+      setForm((prev) => ({ ...prev, [name]: digits.slice(0, limit) }))
+    } else {
+      setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+    }
     setSubmitted(false)
+    setErrorMessage('')
   }
 
   const handleFile = (key) => (event) => {
     const file = event.target.files && event.target.files[0]
     setFileNames((prev) => ({ ...prev, [key]: file ? file.name : '' }))
     setSubmitted(false)
+    setErrorMessage('')
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     if (!form.persetujuan) {
       alert('Mohon centang persetujuan keabsahan data terlebih dahulu.')
       return
     }
-    setSubmitted(true)
+    if (submitting) return
+    if (!isSupabaseConfigured) {
+      setSubmitted(false)
+      setErrorMessage(
+        'Konfigurasi Supabase belum diisi. Lengkapi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY pada file .env, jalankan skema SQL, lalu muat ulang halaman.',
+      )
+      return
+    }
+
+    const nisn = form.nisn.trim()
+    const nik = form.nik.trim()
+    const whatsapp = form.whatsapp.trim()
+    if (nisn.length !== 10 || !/^\d{10}$/.test(nisn)) {
+      setSubmitted(false)
+      setErrorMessage('NISN harus tepat 10 digit angka. Periksa kembali NISN pada rapor/Ijazah, lalu coba lagi.')
+      return
+    }
+    if (nik.length !== 16 || !/^\d{16}$/.test(nik)) {
+      setSubmitted(false)
+      setErrorMessage('NIK harus tepat 16 digit angka sesuai Kartu Keluarga. Periksa kembali NIK, lalu coba lagi.')
+      return
+    }
+    if (!/^\d{9,15}$/.test(whatsapp)) {
+      setSubmitted(false)
+      setErrorMessage('Nomor WhatsApp wali harus 9–15 digit angka (tanpa +62, cukup angka setelahnya).')
+      return
+    }
+    setSubmitting(true)
+    setErrorMessage('')
+    setSubmitted(false)
+
+    const berkas = Object.entries(fileNames)
+      .filter(([, name]) => name)
+      .map(([key, name]) => `${BERKAS_LABELS[key]}: ${name}`)
+    const kode = generateKodePendaftar()
+
+    try {
+      const { error } = await supabase.from('pendaftaran_psb').insert({
+        kode_pendaftar: kode,
+        jenjang: form.jenjang,
+        jalur: form.jalur,
+        metode_seleksi: form.metode,
+        nama_lengkap: form.namaLengkap.trim(),
+        nisn,
+        nik,
+        jenis_kelamin: form.gender,
+        tempat_lahir: form.tempatLahir.trim(),
+        tanggal_lahir: form.tanggalLahir,
+        asal_sekolah: form.asalSekolah.trim(),
+        hafalan: form.hafalan,
+        nama_ayah: form.namaAyah.trim(),
+        nama_ibu: form.namaIbu.trim(),
+        whatsapp: `+62 ${whatsapp}`,
+        pekerjaan_wali: form.pekerjaan.trim(),
+        provinsi: form.provinsi,
+        kota_kabupaten: form.kotaKab.trim(),
+        alamat: form.alamat.trim(),
+        berkas_opsional: berkas.length ? berkas.join('; ') : null,
+      })
+      if (error) throw new Error(friendlyDbError(error.message))
+
+      setKodeTerdaftar(kode)
+      setSubmitted(true)
+      setReloadKey((key) => key + 1)
+      try {
+        localStorage.removeItem(DRAFT_KEY)
+      } catch {
+        /* abaikan */
+      }
+    } catch (err) {
+      setErrorMessage(err.message || 'Terjadi kesalahan jaringan. Periksa koneksi internet lalu coba lagi.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const saveDraft = () => {
@@ -170,6 +291,9 @@ export default function PendaftaranPSB() {
                 type="text"
                 required
                 maxLength={10}
+                minLength={10}
+                pattern="[0-9]{10}"
+                inputMode="numeric"
                 value={form.nisn}
                 onChange={handleChange}
                 placeholder="10 digit angka, cth: 0081234567"
@@ -181,6 +305,9 @@ export default function PendaftaranPSB() {
                 type="text"
                 required
                 maxLength={16}
+                minLength={16}
+                pattern="[0-9]{16}"
+                inputMode="numeric"
                 value={form.nik}
                 onChange={handleChange}
                 placeholder="16 digit NIK pada Kartu Keluarga"
@@ -371,20 +498,24 @@ export default function PendaftaranPSB() {
           </SectionCard>
 
 
-          {/* BAGIAN 4: Unggah Berkas Persyaratan Singkat */}
+          {/* BAGIAN 4: Unggah Berkas Persyaratan Singkat (Opsional) */}
           <SectionCard
             id="bagian-4"
             icon="upload_file"
             number="4"
             title="Unggah Berkas Persyaratan Singkat"
-            badge="Maks. 5 MB / Berkas"
+            badge="Opsional — Tidak Wajib"
             badgeClass="font-label-sm text-label-sm text-secondary bg-secondary-container/40 px-3 py-1 rounded-full font-semibold"
           >
+            <p className="font-body-sm text-body-sm text-on-surface-variant -mt-2">
+              Pengunggahan berkas di sini bersifat <b>opsional</b> dan tidak menjadi syarat wajib pengisian formulir.
+              Bila berkas belum tersedia, berkas fisik dapat diserahkan langsung saat tes seleksi.
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <FileDrop
                 label="Pas Foto Santri"
-                badge="*Wajib"
-                badgeClass="text-error font-body-sm"
+                badge="(Opsional)"
+                badgeClass="text-on-surface-variant font-body-sm"
                 icon="account_box"
                 placeholderText="Pilih Pas Foto"
                 caption="Latar Belakang Biru / Merah (JPG/PNG)"
@@ -394,8 +525,8 @@ export default function PendaftaranPSB() {
               />
               <FileDrop
                 label="Kartu Keluarga (KK)"
-                badge="*Wajib"
-                badgeClass="text-error font-body-sm"
+                badge="(Opsional)"
+                badgeClass="text-on-surface-variant font-body-sm"
                 icon="badge"
                 placeholderText="Pilih Scan KK / Akta"
                 caption="Scan Jelas Format PDF atau Gambar"
@@ -439,13 +570,14 @@ export default function PendaftaranPSB() {
 
             <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
               <button
-                className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl bg-secondary text-on-secondary font-label-lg text-label-lg font-bold shadow-lg hover:bg-primary transition-all group"
+                className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl bg-secondary text-on-secondary font-label-lg text-label-lg font-bold shadow-lg hover:bg-primary transition-all group disabled:opacity-60 disabled:cursor-not-allowed"
                 type="submit"
+                disabled={submitting}
               >
                 <span className="material-symbols-outlined text-[22px] group-hover:translate-x-0.5 transition-transform">
-                  send
+                  {submitting ? 'progress_activity' : 'send'}
                 </span>
-                <span>Kirim Formulir Pendaftaran Sekarang</span>
+                <span>{submitting ? 'Mengirim ke Server…' : 'Kirim Formulir Pendaftaran Sekarang'}</span>
               </button>
               <button
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-surface-container-low text-secondary hover:bg-surface-container transition-all font-label-lg text-label-lg font-semibold"
@@ -457,6 +589,16 @@ export default function PendaftaranPSB() {
               </button>
             </div>
 
+            {errorMessage && (
+              <div ref={statusRef} className="p-4 rounded-xl bg-error-container text-on-error-container flex items-start gap-3">
+                <span className="material-symbols-outlined text-[22px] shrink-0">error</span>
+                <div className="text-body-md">
+                  <p className="font-title text-[15px] font-bold">Gagal Mengirim Formulir</p>
+                  <p className="text-body-sm mt-0.5">{errorMessage}</p>
+                </div>
+              </div>
+            )}
+
             {submitted && (
               <div
                 ref={statusRef}
@@ -466,7 +608,9 @@ export default function PendaftaranPSB() {
                 <div className="text-body-md">
                   <p className="font-title text-[15px] font-bold text-primary">Formulir Terkirim Berhasil!</p>
                   <p className="text-on-surface-variant text-body-sm mt-0.5">
-                    Kode pendaftaran unik serta petunjuk tes seleksi telah dikirimkan ke nomor WhatsApp wali santri.
+                    Data Anda telah tersimpan di sistem. Kode pendaftaran Anda:{' '}
+                    <b className="text-secondary">{kodeTerdaftar}</b> — simpan kode ini dan tunjukkan saat tes
+                    seleksi. Petunjuk tes seleksi akan dikirim ke nomor WhatsApp wali santri.
                   </p>
                 </div>
               </div>
@@ -499,6 +643,9 @@ export default function PendaftaranPSB() {
           </div>
         </form>
       </section>
+
+      {/* Daftar calon santri yang telah terdaftar (dari Supabase) */}
+      <RegisteredCandidates reloadKey={reloadKey} />
 
 
       {/* Islamic Assurance Quote Block */}
