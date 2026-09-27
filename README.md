@@ -11,11 +11,20 @@ npm run build    # production build ke dist/
 npm run preview  # preview hasil build
 ```
 
+## Rute
+
+- `#` (default) — halaman beranda (profil + panduan PSB), anchor in-page seperti `#psb-registrasi`
+- `#/pendaftaran-psb-online` — halaman **Formulir Pendaftaran PSB Online** (multi-bagian, simpan draf di localStorage)
+
+Routing sederhana berbasis `hashchange` (tanpa dependensi router); lihat `src/App.jsx`.
+
 ## Struktur
 
-- `src/App.jsx` — komposisi halaman (single page)
+- `src/App.jsx` — komposisi halaman + hash router
+- `src/pages/PendaftaranPSB.jsx` — halaman formulir pendaftaran (state, validasi, submit, draf)
+- `src/components/registration/` — `RegistrationHero` (band atas + stepper), `FormControls` (`SectionCard`, `TextInput`, `SelectInput`, `FileDrop`)
 - `src/components/` — Header, Hero, Philosophy, Curriculum, Facilities, Admission, Achievements, Leadership, FaqContact, FloatingChat, Footer
-- `src/data/` — konten repetitif (tier kurikulum, jadwal, biaya, FAQ, testimoni, prestasi)
+- `src/data/` — konten repetitif (tier kurikulum, jadwal, biaya, FAQ, testimoni, prestasi, form PSB)
 - `src/images.js` — URL aset gambar dari desain
 - `tailwind.config.js` — token desain (warna, tipografi, spacing) disalin persis dari desain asli
 

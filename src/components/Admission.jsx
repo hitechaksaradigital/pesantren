@@ -70,7 +70,7 @@ export default function Admission() {
               </div>
               <a
                 className="px-5 py-2.5 rounded-lg bg-secondary text-on-secondary font-label-md text-label-md hover:bg-secondary/90 transition-all text-center whitespace-nowrap"
-                href="#psb-registrasi"
+                href="#/pendaftaran-psb-online"
               >
                 Isi Formulir Online
               </a>

@@ -115,7 +115,7 @@ export default function Header() {
             </a>
             <a
               className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-secondary text-on-secondary font-label-md text-label-md hover:bg-primary transition-all shadow-[0_2px_8px_rgba(43,104,98,0.25)]"
-              href="#psb-registrasi"
+              href="#/pendaftaran-psb-online"
             >
               Daftar PSB Online
             </a>

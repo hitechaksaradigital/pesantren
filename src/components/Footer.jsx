@@ -3,6 +3,7 @@ import { LOGO_SRC } from '../images.js'
 const QUICK_LINKS = [
   { label: 'Profil Singkat & Visi', href: '#profil-dan-visi' },
   { label: 'Program Marhalah Ula, Wustha, & Ulya', href: '#panduan-pendidikan' },
+  { label: 'Formulir Pendaftaran PSB Online', href: '#/pendaftaran-psb-online' },
   { label: 'Rincian Biaya PSB 2025/2026', href: '#psb-registrasi' },
   { label: 'Jadwal Tes Seleksi Masuk', href: '#psb-registrasi' },
   { label: 'Pertanyaan Umum (FAQ)', href: '#kontak-dan-faq' },

@@ -87,7 +87,7 @@ export default function FaqContact() {
               <div className="pt-4 flex flex-col sm:flex-row gap-3">
                 <a
                   className="flex-1 text-center py-3 rounded-lg bg-secondary text-on-secondary font-label-md text-label-md hover:bg-secondary/90 transition-all"
-                  href="#psb-registrasi"
+                  href="#/pendaftaran-psb-online"
                 >
                   Daftar Online Sekarang
                 </a>
